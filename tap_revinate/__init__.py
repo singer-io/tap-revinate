@@ -19,9 +19,9 @@ import logging
 
 import dateutil.parser
 
+import requests
 import singer
 from singer import utils
-import requests
 
 import backoff
 
@@ -30,7 +30,6 @@ import tap_revinate.schemas as schemas
 LOGGER = singer.get_logger()
 
 BASE_URL = 'https://porter.revinate.com'
-
 
 @backoff.on_exception(backoff.expo,
                       (requests.exceptions.RequestException),
@@ -178,6 +177,7 @@ def sync_reviews(headers, config, state):
     size = 10 # number of records per request
 
     to_timestamp = int(headers['X-Revinate-Porter-Timestamp'])
+    last_update = to_timestamp  # init
     from_timestamp = 0  # initial value
 
     # set from_timestamp as NVL(state.last_update, config.start_date, now - 1 year)
@@ -209,11 +209,16 @@ def sync_reviews(headers, config, state):
             parsed_review = parse_review(record)
 
             singer.write_record('reviews', parsed_review)
+            last_update = record['updatedAt']
         
         page_json = reviews_parsed['page']
         total_pages = int(page_json.get('totalPages', 1)) - 1
         page = page + 1
 
+    # update state last_update
+    utils.update_state(state, 'last_update', last_update)
+    singer.write_state(state)
+    LOGGER.info("State synced to last_update: {}".format(last_update))
     LOGGER.info("Done syncing reviews.")
 
 def parse_hotel_reviews_snapshot_by_time(hotel_id, hotel_reviews_snapshot_url, period):
@@ -509,6 +514,9 @@ def load_state(filename):
 def do_sync(args):
     LOGGER.info("Starting sync.")
 
+    config = {}
+    state = {}
+    
     config = load_config(args.config)
     state = load_state(args.state)
 
