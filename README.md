@@ -48,6 +48,15 @@ This tap:
    tap-revinate --config config.json
    ```
 
+   Or:
+   ```bash
+   tap-revinate -c ./tap-revinate/config.json | target-csv
+   ```
+
+   Or:
+   ```bash
+   tap-revinate --config ./tap-revinate/config.json --state ./tap-revinate/state.json | target-csv
+   ```
 ---
 
 Copyright &copy; 2018 Stitch
