@@ -28,7 +28,6 @@ This tap:
 
     You'll need:
 
-    - Your account id (if you aren't sure, contact your account manager)
     - A Revinate username (email address) with access to the API
     - A Revinate API key and secret (your account manager can give you these)
 
@@ -56,6 +55,11 @@ This tap:
    Or:
    ```bash
    tap-revinate --config ./tap-revinate/config.json --state ./tap-revinate/state.json | target-csv
+   ```
+
+   Or: 
+   ```bash
+   tap-revinate --config ./tap-revinate/config.json --state ./tap-revinate/state.json | singer-check-tap
    ```
 ---
 
