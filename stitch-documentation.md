@@ -51,7 +51,7 @@ With each run of the integration, the following data sets are extracted and repl
 ### hotels
 
 - Table name: hotel 
-- Description:
+- Description: A list of ALL hotels and their addresses that are accessible to user's API key
 - Primary key column: hotel_id
 - Replicated fully
 - Bookmark column: N/A
@@ -60,7 +60,7 @@ With each run of the integration, the following data sets are extracted and repl
 ### reviews
 
 - Table name: review 
-- Description:
+- Description: A subset of the latest reviews for the hotels accessible by the user's API key
 - Primary key column: review_id
 - Replicated incrementally
 - Bookmark column: updated_at
