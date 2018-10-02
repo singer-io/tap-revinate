@@ -70,7 +70,7 @@ With each run of the integration, the following data sets are extracted and repl
 
 - Table name: hotel_reviews_snapshot 
 - Description: Snapshot summary stats of reviews by hotel for the last completed week
-- Primary key columns: hotel_id, snapshot_start_date, snapshot_end_date
+- Primary key columns: hotel_id, snapshot_start_date
 - Replicated partially (all hotels, last completed week only)
 - Bookmark column: N/A
 - API endpoint documentation: [hotel_reviews_snapshot](https://porter.revinate.com/documentation#hotels)
@@ -79,7 +79,7 @@ With each run of the integration, the following data sets are extracted and repl
 
 - Table name: hotel_reviews_snapshot_by_site 
 - Description: Snapshot summary stats of reviews by hotel and review site for the last completed week
-- Primary key columns: hotel_id, review_site_id, snapshot_start_date, snapshot_end_date
+- Primary key columns: hotel_id, review_site_id, snapshot_start_date
 - Replicated partially (all hotels and review sites, last completed week only)
 - Bookmark column: N/A
 - API endpoint documentation: [hotel_reviews_snapshot_by_site](https://porter.revinate.com/documentation#hotels)

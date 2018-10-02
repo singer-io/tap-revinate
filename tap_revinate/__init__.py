@@ -39,7 +39,6 @@ def request(url, headers, params={}):
             params=params)
     except Exception as exception:
         LOGGER.exception(exception)
-
     LOGGER.info("Got response code: {}".format(response.status_code))
     response.raise_for_status()
     return response
@@ -123,8 +122,10 @@ def parse_review(review):
         'review_json': str(review),
         'hotel_id': int(hotel_id),
         'hotel_url': str(hotel_url),
-        'title': str(review.get('title', '')),
-        'body': str(review.get('body', '')),
+        'title': str(review.get('title', '')).replace('"', '\\"').replace('\r', \
+            '').replace('\n', ''),
+        'body': str(review.get('body', '')).replace('"', '\\"').replace('\r', \
+            '').replace('\n', ''),
         'author': str(review.get('author', '')),
         'author_location': str(review.get('authorLocation', '')),
         'date_review': int(review.get('dateReview', 0)),
@@ -171,7 +172,6 @@ def sync_reviews(headers, config, state):
     to_timestamp = int(headers['X-Revinate-Porter-Timestamp'])
     last_update = to_timestamp  # init
     from_timestamp = 0  # initial value
-
     # set from_timestamp as NVL(state.last_update, config.start_date, now - 1 year)
     if 'last_update' not in state:
         if 'start_date' not in config:
@@ -227,7 +227,6 @@ def parse_hotel_reviews_snapshot_by_time(hotel_id, hotel_reviews_snapshot_url, p
         'snapshot_trip_advisor_market_size': int(period.get('values', \
             {}).get('tripadvisorMarketSize', 0)),
     }
-
 
 def parse_hotel_reviews_snapshot_by_site(hotel_id, hotel_reviews_snapshot_url, \
     start_date, end_date, site):
