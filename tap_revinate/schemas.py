@@ -125,4 +125,3 @@ reviews = {
         'links_json': {'type': 'string'}
     }
 }
-
