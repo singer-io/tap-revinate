@@ -16,6 +16,7 @@ import time
 import logging
 import dateutil.parser
 import requests
+from urllib3.exceptions import HTTPError
 import singer
 from singer import utils
 import backoff
@@ -166,7 +167,9 @@ def fetch_reviews(headers, params):
 
 def sync_reviews(headers, config, state):
     page = 0 # initialize at first page
-    total_pages = 0 # initial total pages, which gets overwritten
+    rec = 1 # initialize first record
+    total_pages = 1 # initial total pages, which gets overwritten
+    total_elements = 0 # initial total elements, which gets overwritten
     size = 10 # number of records per request
     to_timestamp = int(headers['X-Revinate-Porter-Timestamp'])
     last_update = to_timestamp  # init
@@ -178,27 +181,38 @@ def sync_reviews(headers, config, state):
             from_timestamp = to_timestamp - (60 * 60 * 24 * 7)  # looks back 1 week
         else:
             from_timestamp = int(time.mktime(datetime.datetime.strptime(config['start_date'], \
-                '%Y-%m-%d').timetuple()))
+                '%Y-%m-%dT%H:%M:%SZ').timetuple()))
     else:
         from_timestamp = int(state['last_update'])
     updated_at_range = str(from_timestamp) + '..' + str(to_timestamp)
     # loop thru all pages
-    while page <= total_pages:
-        LOGGER.info('Page {} of {} Total Pages'.format(str(page), str(total_pages)))
+    while (page + 1) <= total_pages:
+        if (rec + size) <= total_elements:
+            rec_to = rec + size - 1
+        else:
+            rec_to = total_elements
+        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format(str(page + 1), \
+            str(total_pages), str(rec), str(rec_to), str(total_elements)))
         params = {
             'updatedAt': updated_at_range,
             'page': page,
             'size': size,
             'sort': 'updatedAt,ASC'
         }
-        reviews_parsed = fetch_reviews(headers, params)
+        try:
+            reviews_parsed = fetch_reviews(headers, params)
+        except:
+            pass
+            break
         # loop thru all records on page
         for record in reviews_parsed['content']:
             parsed_review = parse_review(record)
             singer.write_record('reviews', parsed_review)
             last_update = record['updatedAt']
+            rec = rec + 1
         page_json = reviews_parsed['page']
-        total_pages = int(page_json.get('totalPages', 1)) - 1
+        total_pages = int(page_json.get('totalPages', 1))
+        total_elements = int(page_json.get('totalElements', 0))
         page = page + 1
     # update state last_update
     utils.update_state(state, 'last_update', last_update)
@@ -400,25 +414,38 @@ def fetch_hotels(headers, params):
 
 def sync_hotels(headers):
     page = 0 # initialize at first page
-    total_pages = 0 # initial total pages, which gets overwritten
+    rec = 1 # initialize first record
+    total_pages = 1 # initial total pages, which gets overwritten
+    total_elements = 0 # initial total elements, which gets overwritten
     size = 10 # number of records per request
     # loop thru all pages
-    while page <= total_pages:
-        LOGGER.info('Page {} of {} Total Pages'.format(str(page), str(total_pages)))
+    while (page + 1) <= total_pages:
+        if (rec + size) <= total_elements:
+            rec_to = rec + size - 1
+        else:
+            rec_to = total_elements
+        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format(str(page + 1), \
+            str(total_pages), str(rec), str(rec_to), str(total_elements)))
         params = {
             'page': page,
             'size': size,
             'sort': 'id,ASC'
         }
-        hotels_parsed = fetch_hotels(headers, params)
+        try:
+            hotels_parsed = fetch_hotels(headers, params)
+        except:
+            pass
+            break
         # loop thru all records on page
         for record in hotels_parsed['content']:
             parsed_hotel = parse_hotel(record)
             singer.write_record('hotels', parsed_hotel)
             hotel_id = str(parsed_hotel.get('hotel_id', ''))
             sync_hotel_reviews_snapshot(headers, hotel_id)
+            rec = rec + 1
         page_json = hotels_parsed['page']
-        total_pages = int(page_json.get('totalPages', 1)) - 1
+        total_pages = int(page_json.get('totalPages', 1))
+        total_elements = int(page_json.get('totalElements', 0))
         page = page + 1
     LOGGER.info("Done syncing hotels.")
 
@@ -480,8 +507,8 @@ def do_sync(args):
     state = {}
     config = load_config(args.config)
     state = load_state(args.state)
-    # Get current timestamp - 10 min
-    minutes = 10
+    # Get current timestamp - 5 min
+    minutes = 5
     unix_timestamp = int(time.time())-(60 * minutes)
     hash_key = generate_hash_key(
         username=config.get('username'),
