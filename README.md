@@ -39,7 +39,7 @@ This tap:
     - `username`, your Revinate username (email address) 
     - `api_key`, your Revinate API key (from your account manager)
     - `api_secret`, your Revinate API secret (from your account manager)
-    - `start_date`, the date from which you want to sync data, in the format `2018-08-01`
+    - `start_date`, the date from which you want to sync data, in the format `2018-08-01T08:00:00Z`
 
 4. Run the application.
 

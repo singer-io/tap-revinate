@@ -30,7 +30,7 @@ Reach out to your Revinate Account Manager for assistance. Once you receive this
 
 7. In the **API Secret** field, enter your Revinate API Secret.
 
-8. In the **Start Date** field, enter the minimum, beginning start date for Revinate Reviews (e.g. 2017-01-1).
+8. Accept the default **Start Date** (1 year of historical data), or select the **Start Date**. This date is the minimum, beginning date for Revinate Reviews (e.g. 2017-01-1).
 
 ---
 
