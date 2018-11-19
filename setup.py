@@ -12,9 +12,10 @@ setup(name='tap-revinate',
       install_requires=[
           'singer-python==5.2.0',
           'backoff==1.3.2',
-          'requests==2.19.1',
+          'requests==2.20.0',
           'python-dateutil==2.7.3',
-          'pybase64==0.4.0'
+          'pybase64==0.4.0',
+          'pendulum==2.0.3'
       ],
       entry_points='''
           [console_scripts]

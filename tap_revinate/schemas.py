@@ -59,11 +59,11 @@ hotel_reviews_snapshot_by_site = {
         'review_site_main_url': {'type': 'string'},
         'review_site_slug': {'type': 'string'},
         'site_average_rating': {'type': 'number'},
-        'site_new_reviews': {'type': 'integer'},
+        'site_new_reviews': {'type': 'number'},
         'site_pos_reviews_pct': {'type': 'number'},
         'site_trip_advisor_market_ranking': {'type': 'integer'},
         'site_trip_advisor_market_ranking_pctl': {'type': 'number'},
-        'site_trip_advisor_market_size': {'type': 'integer'},
+        'site_trip_advisor_market_size': {'type': 'integer'}
     }
 }
 
@@ -75,11 +75,11 @@ hotel_reviews_snapshot_by_time = {
         'time_period_json': {'type': 'string'},
         'unix_time': {'type': 'integer'},
         'snapshot_average_rating': {'type': 'number'},
-        'snapshot_new_reviews': {'type': 'integer'},
+        'snapshot_new_reviews': {'type': 'number'},
         'snapshot_pos_reviews_pct': {'type': 'number'},
         'snapshot_trip_advisor_market_ranking': {'type': 'integer'},
         'snapshot_trip_advisor_market_ranking_pctl': {'type': 'number'},
-        'snapshot_trip_advisor_market_size': {'type': 'integer'},
+        'snapshot_trip_advisor_market_size': {'type': 'integer'}
     }
 }
 

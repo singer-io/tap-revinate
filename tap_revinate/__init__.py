@@ -6,7 +6,6 @@ import hashlib
 import base64
 import binascii
 import re
-import argparse
 import copy
 import datetime
 import json
@@ -16,7 +15,6 @@ import time
 import logging
 import dateutil.parser
 import requests
-from urllib3.exceptions import HTTPError
 import singer
 from singer import utils
 import backoff
@@ -24,6 +22,17 @@ import tap_revinate.schemas as schemas
 
 LOGGER = singer.get_logger()
 BASE_URL = 'https://porter.revinate.com'
+REQUIRED_CONFIG_KEYS = ['username',
+                        'api_key',
+                        'api_secret',
+                        'start_date']
+CONFIG = {
+    'username': None,
+    'api_key': None,
+    'api_secret': None,
+    'start_date': None
+}
+STATE = {}
 
 @backoff.on_exception(backoff.expo,
                       (requests.exceptions.RequestException),
@@ -166,7 +175,7 @@ def fetch_reviews(headers, params):
     parsed = json.loads(resp.text)
     return parsed
 
-def sync_reviews(headers, config, state):
+def sync_reviews(headers, CONFIG, STATE):
     page = 0 # initialize at first page
     rec = 1 # initialize first record
     total_pages = 1 # initial total pages, which gets overwritten
@@ -175,15 +184,15 @@ def sync_reviews(headers, config, state):
     to_timestamp = int(headers['X-Revinate-Porter-Timestamp'])
     last_update = to_timestamp  # init
     from_timestamp = 0  # initial value
-    # set from_timestamp as NVL(state.last_update, config.start_date, now - 1 year)
-    if 'last_update' not in state:
-        if 'start_date' not in config:
+    # set from_timestamp as NVL(STATE.last_update, CONFIG.start_date, now - 1 year)
+    if 'last_update' not in STATE:
+        if 'start_date' not in CONFIG:
             from_timestamp = to_timestamp - (60 * 60 * 24 * 7)  # looks back 1 week
         else:
-            from_timestamp = int(time.mktime(datetime.datetime.strptime(config['start_date'], \
+            from_timestamp = int(time.mktime(datetime.datetime.strptime(CONFIG['start_date'], \
                 '%Y-%m-%dT%H:%M:%SZ').timetuple()))
     else:
-        from_timestamp = int(state['last_update'])
+        from_timestamp = int(STATE['last_update'])
     updated_at_range = str(from_timestamp) + '..' + str(to_timestamp)
     # loop thru all pages
     while (page + 1) <= total_pages:
@@ -191,8 +200,8 @@ def sync_reviews(headers, config, state):
             rec_to = rec + size - 1
         else:
             rec_to = total_elements
-        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format(str(page + 1), \
-            str(total_pages), str(rec), str(rec_to), str(total_elements)))
+        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format( \
+            str(page + 1), str(total_pages), str(rec), str(rec_to), str(total_elements)))
         params = {
             'updatedAt': updated_at_range,
             'page': page,
@@ -201,8 +210,8 @@ def sync_reviews(headers, config, state):
         }
         try:
             reviews_parsed = fetch_reviews(headers, params)
-        except:
-            pass
+        except Exception as exception:
+            LOGGER.exception(exception)
             break
         # loop thru all records on page
         for record in reviews_parsed['content']:
@@ -214,9 +223,9 @@ def sync_reviews(headers, config, state):
         total_pages = int(page_json.get('totalPages', 1))
         total_elements = int(page_json.get('totalElements', 0))
         page = page + 1
-    # update state last_update
-    utils.update_state(state, 'last_update', last_update)
-    singer.write_state(state)
+    # update STATE last_update
+    utils.update_state(STATE, 'last_update', last_update)
+    singer.write_state(STATE)
     LOGGER.info("State synced to last_update: {}".format(last_update))
     LOGGER.info("Done syncing reviews.")
 
@@ -423,8 +432,8 @@ def sync_hotels(headers):
             rec_to = rec + size - 1
         else:
             rec_to = total_elements
-        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format(str(page + 1), \
-            str(total_pages), str(rec), str(rec_to), str(total_elements)))
+        LOGGER.info('Page {} of {} Total Pages, Record {}-{} of {} Total Records'.format( \
+            str(page + 1), str(total_pages), str(rec), str(rec_to), str(total_elements)))
         params = {
             'page': page,
             'size': size,
@@ -432,8 +441,8 @@ def sync_hotels(headers):
         }
         try:
             hotels_parsed = fetch_hotels(headers, params)
-        except:
-            pass
+        except Exception as exception:
+            LOGGER.exception(exception)
             break
         # loop thru all records on page
         for record in hotels_parsed['content']:
@@ -458,66 +467,23 @@ def generate_hash_key(username, api_secret, unix_timestamp):
     LOGGER.info("Generated user-time hash key.")
     return hash_key
 
-def validate_config(config):
-    required_keys = ['username', 'api_key', 'api_secret', 'start_date']
-    missing_keys = []
-    null_keys = []
-    has_errors = False
-    for required_key in required_keys:
-        if required_key not in config:
-            missing_keys.append(required_key)
-        elif config.get(required_key) is None:
-            null_keys.append(required_key)
-    if missing_keys:
-        LOGGER.fatal("Config is missing keys: {}"
-                     .format(", ".join(missing_keys)))
-        has_errors = True
-    if null_keys:
-        LOGGER.fatal("Config has null keys: {}"
-                     .format(", ".join(null_keys)))
-        has_errors = True
-    if has_errors:
-        raise RuntimeError
-
-def load_config(filename):
-    config = {}
-    try:
-        with open(filename) as config_file:
-            config = json.load(config_file)
-    except:
-        LOGGER.fatal("Failed to decode config file. Is it valid json?")
-        raise RuntimeError
-    validate_config(config)
-    return config
-
-def load_state(filename):
-    if filename is None:
-        return {}
-    try:
-        with open(filename) as state_file:
-            return json.load(state_file)
-    except:
-        LOGGER.fatal("Failed to decode state file. Is it valid json?")
-        raise RuntimeError
-
 def do_sync(args):
     LOGGER.info("Starting sync.")
-    config = {}
-    state = {}
-    config = load_config(args.config)
-    state = load_state(args.state)
+    CONFIG.update(args.config)
+    if args.state:
+        STATE.update(args.state)
     # Get current timestamp - 5 min
     minutes = 5
     unix_timestamp = int(time.time())-(60 * minutes)
     hash_key = generate_hash_key(
-        username=config.get('username'),
-        api_secret=config.get('api_secret'),
+        username=CONFIG.get('username'),
+        api_secret=CONFIG.get('api_secret'),
         unix_timestamp=unix_timestamp
     )
     headers = {
-        'X-Revinate-Porter-Username': config.get('username'),
+        'X-Revinate-Porter-Username': CONFIG.get('username'),
         'X-Revinate-Porter-Timestamp': str(unix_timestamp),
-        'X-Revinate-Porter-Key': config.get('api_key'),
+        'X-Revinate-Porter-Key': CONFIG.get('api_key'),
         'X-Revinate-Porter-Encoded': hash_key
     }
     singer.write_schema('hotels',
@@ -527,30 +493,26 @@ def do_sync(args):
                         schemas.reviews,
                         key_properties=['review_id'])
     singer.write_schema('hotel_reviews_snapshot',
-                        schemas.reviews,
+                        schemas.hotel_reviews_snapshot,
                         key_properties=['hotel_id', 'snapshot_start_date'])
     singer.write_schema('hotel_reviews_snapshot_by_site',
-                        schemas.reviews,
+                        schemas.hotel_reviews_snapshot_by_site,
                         key_properties=['hotel_id', 'review_site_id', 'snapshot_start_date'])
     singer.write_schema('hotel_reviews_snapshot_by_time',
-                        schemas.reviews,
+                        schemas.hotel_reviews_snapshot_by_time,
                         key_properties=['hotel_id', 'unix_time'])
     sync_hotels(headers)
-    sync_reviews(headers, config, state)
+    sync_reviews(headers, CONFIG, STATE)
 
 def main_impl():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-c', '--config', help='Config file', required=True)
-    parser.add_argument(
-        '-s', '--state', help='State file')
-    args = parser.parse_args()
+    args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     try:
         do_sync(args)
     except RuntimeError:
         LOGGER.fatal("Run failed.")
         exit(1)
 
+@utils.handle_top_exception(LOGGER)
 def main():
     try:
         main_impl()
