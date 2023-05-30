@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='tap-revinate',
-      version='1.0.0',
+      version='1.0.1',
       description='Singer.io tap for extracting data from the Revinate Porter API',
       author='Bytecode IO',
       url='http://www.singer.io',
