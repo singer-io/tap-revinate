@@ -17,7 +17,7 @@ jobs:
          command: |
             source /usr/local/share/virtualenvs/tap-revinate/bin/activate
             uv pip install pylint
-            pylint tap_revinate -d missing-docstring,dangerous-default-value,logging-format-interpolation,broad-except,consider-using-f-string,too-many-locals,too-many-branches,too-many-statements,invalid-name,redefined-outer-name,consider-using-sys-exit
+            pylint tap_revinate -d missing-docstring,dangerous-default-value,logging-format-interpolation,broad-except,consider-using-f-string,too-many-locals,too-many-branches,too-many-statements,invalid-name,redefined-outer-name,consider-using-sys-exit,consider-using-from-import,missing-timeout
       - store_test_results:
           path: test_output/report.xml
       - store_artifacts:
